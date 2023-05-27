@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pong Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: black;
+            width: 800px;
+            height: 400px;
+        }
+
+        .winner-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: black;'
+            border: 3px solid white;
+            padding: 20px;
+            color: #FFF;
+            font-size: 30px;
+            display: none;
+        }
+
+        #start-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: black;
+            border: 3px solid white;
+            padding: 20px;
+            color: #FFF;
+            font-size: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="pong"></canvas>
+    <div id="winner-message" class="winner-box"></div>
+    <div id="start-menu">
+        <label for="ball-speed">Ball Speed:</label>
+        <input type="number" id="ball-speed" value="12" min="1" max="20">
+        <label for="paddle-speed">Paddle Speed:</label>
+        <input type="number" id="paddle-speed" value="4" min="1" max="10">
+        <button id="start-button">Start</button>
+    </div>
+
+    <script>
+        // Get the canvas element and its context
+        const canvas = document.getElementById("pong");
+        const context = canvas.getContext("2d");
+
+        // Set canvas dimensions
+        const width = 800;
+        const height = 400;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Create the user paddle, computer paddle, ball, and score object
+        const user = {
+            x: 0,
+            y: canvas.height / 2 - 100 / 2,
+            width: 10,
+            height: 100,
+            color: "#FFD700",
+            dy: 4,
+            moveUp: false,
+            moveDown: false
+        };
+
+        const computer = {
+            x: canvas.width - 10,
+            y: canvas.height / 2 - 100 / 2,
+            width: 10,
+            height: 100,
+            color: "#FFD700",
+            dy: 4
+        };
+
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10,
+            speed: 12,
+            dx: 4,
+            dy: 4
+        };
+
+        const score = {
+            user: 0,
+            computer: 0
+        };
+
+        const winnerMessage = document.getElementById("winner-message");
+        const startMenu = document.getElementById("start-menu");
+        const ballSpeedInput = document.getElementById("ball-speed");
+        const paddleSpeedInput = document.getElementById("paddle-speed");
+        const startButton = document.getElementById("start-button");
+
+        let isPaused = false;
+
+        // Draw the paddles
+        function drawPaddle(x, y, width, height, color) {
+            context.fillStyle = color;
+            context.fillRect(x, y, width, height);
+        }
+
+        // Draw the ball
+        function drawBall(x, y, radius, color) {
+            context.fillStyle = color;
+            context.beginPath();
+            context.arc(x, y, radius, 0, Math.PI * 2, false);
+            context.closePath();
+            context.fill();
+        }
+
+        // Draw the score
+        function drawScore() {
+            context.fillStyle = "#FFF";
+            context.font = "35px sans-serif";
+            context.fillText(score.user + " - " + score.computer, canvas.width / 2 - 15, 35);
+        }
+
+        // Draw the winner message
+        function drawWinnerMessage() {
+            winnerMessage.textContent = score.user === 10 ? "Player wins!" : "Computer wins!";
+            winnerMessage.style.display = "block";
+        }
+
+        // Update the canvas
+        function update() {
+			context.clearRect(0, 0, canvas.width, canvas.height);
+
+			drawPaddle(user.x, user.y, user.width, user.height, user.color);
+			drawPaddle(computer.x, computer.y, computer.width, computer.height, computer.color);
+			drawBall(ball.x, ball.y, ball.radius, "#FFF");
+			drawScore();
+
+			if (score.user === 10 || score.computer === 10) {
+				drawWinnerMessage();
+				return;
+			}
+
+			if (!isPaused) {
+				if (user.moveUp && user.y > 0) {
+					user.y -= user.dy;
+				}
+				if (user.moveDown && user.y + user.height < canvas.height) {
+					user.y += user.dy;
+				}
+
+				if (computer.y < ball.y && computer.y + computer.height < canvas.height) {
+					computer.y += computer.dy;
+				}
+				if (computer.y > ball.y && computer.y > 0) {
+					computer.y -= computer.dy;
+				}
+
+				ball.x += ball.dx;
+				ball.y += ball.dy;
+
+				if (
+					ball.x + ball.radius > canvas.width - computer.width &&
+					ball.y + ball.radius > computer.y &&
+					ball.y - ball.radius < computer.y + computer.height
+				) {
+					if (ball.dx > 0) {
+						let collidePoint = (ball.y - (computer.y + computer.height / 2)) / (computer.height / 2);
+						let angle = collidePoint * (Math.PI / 4);
+						ball.dx = -Math.abs(ball.speed) * Math.cos(angle);
+						ball.dy = Math.abs(ball.speed) * Math.sin(angle);
+					}
+				}
+
+				if (
+					ball.x - ball.radius < user.width &&
+					ball.y + ball.radius > user.y &&
+					ball.y - ball.radius < user.y + user.height
+				) {
+					if (ball.dx < 0) {
+						let collidePoint = (ball.y - (user.y + user.height / 2)) / (user.height / 2);
+						let angle = collidePoint * (Math.PI / 4);
+						ball.dx = Math.abs(ball.speed) * Math.cos(angle);
+						ball.dy = Math.abs(ball.speed) * Math.sin(angle);
+					}
+				}
+
+				if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+					ball.dy = -ball.dy;
+				}
+
+				if (ball.x - ball.radius < 0) {
+					score.computer++;
+					resetBall();
+				} else if (ball.x + ball.radius > canvas.width) {
+					score.user++;
+					resetBall();
+				}
+			}
+		}
+
+
+		function resetBall() {
+			ball.x = canvas.width / 2;
+			ball.y = canvas.height / 2;
+			ball.speed = parseInt(ballSpeedInput.value);
+			let angle = Math.random() * (Math.PI / 4) - Math.PI / 8; // Randomize initial angle
+			ball.dx = ball.speed * Math.cos(angle) * (Math.random() < 0.5 ? 1 : -1); // Randomize initial direction
+			ball.dy = ball.speed * Math.sin(angle) * (Math.random() < 0.5 ? 1 : -1); // Randomize initial direction
+		}
+
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "ArrowUp") {
+                user.moveUp = true;
+            }
+            if (event.key === "ArrowDown") {
+                user.moveDown = true;
+            }
+            if (event.key === " ") {
+                isPaused = !isPaused;
+            }
+        });
+
+        document.addEventListener("keyup", function(event) {
+            if (event.key === "ArrowUp") {
+                user.moveUp = false;
+            }
+            if (event.key === "ArrowDown") {
+                user.moveDown = false;
+            }
+        });
+
+        startButton.addEventListener("click", function() {
+            // Update ball and paddle speeds
+            ball.speed = parseInt(ballSpeedInput.value);
+            user.dy = parseInt(paddleSpeedInput.value);
+            computer.dy = parseInt(paddleSpeedInput.value);
+
+            // Hide start menu
+            startMenu.style.display = "none";
+
+            // Start the game
+            gameLoop();
+        });
+
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Show the start menu initially
+        startMenu.style.display = "block";
+    </script>
+</body>
+</html>
